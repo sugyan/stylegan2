@@ -52,12 +52,14 @@ def conv2d_layer(x, fmaps, kernel, up=False, down=False, resample_kernel=None, g
     assert not (up and down)
     assert kernel >= 1 and kernel % 2 == 1
     w = get_weight([kernel, kernel, x.shape[1].value, fmaps], gain=gain, use_wscale=use_wscale, lrmul=lrmul, weight_var=weight_var)
+    x = tf.transpose(x, [0, 2, 3, 1])
     if up:
-        x = upsample_conv_2d(x, tf.cast(w, x.dtype), data_format='NCHW', k=resample_kernel)
+        x = upsample_conv_2d(x, tf.cast(w, x.dtype), data_format='NHWC', k=resample_kernel)
     elif down:
-        x = conv_downsample_2d(x, tf.cast(w, x.dtype), data_format='NCHW', k=resample_kernel)
+        x = conv_downsample_2d(x, tf.cast(w, x.dtype), data_format='NHWC', k=resample_kernel)
     else:
-        x = tf.nn.conv2d(x, tf.cast(w, x.dtype), data_format='NCHW', strides=[1,1,1,1], padding='SAME')
+        x = tf.nn.conv2d(x, tf.cast(w, x.dtype), data_format='NHWC', strides=[1,1,1,1], padding='SAME')
+    x = tf.transpose(x, [0, 3, 1, 2])
     return x
 
 #----------------------------------------------------------------------------
@@ -112,12 +114,14 @@ def modulated_conv2d_layer(x, y, fmaps, kernel, up=False, down=False, demodulate
         x *= tf.cast(s[:, :, np.newaxis, np.newaxis], x.dtype) # [BIhw] Not fused => scale input activations.
 
     # Convolution with optional up/downsampling.
+    x = tf.transpose(x, [0, 2, 3, 1])
     if up:
-        x = upsample_conv_2d(x, tf.cast(w, x.dtype), data_format='NCHW', k=resample_kernel)
+        x = upsample_conv_2d(x, tf.cast(w, x.dtype), data_format='NHWC', k=resample_kernel)
     elif down:
-        x = conv_downsample_2d(x, tf.cast(w, x.dtype), data_format='NCHW', k=resample_kernel)
+        x = conv_downsample_2d(x, tf.cast(w, x.dtype), data_format='NHWC', k=resample_kernel)
     else:
-        x = tf.nn.conv2d(x, tf.cast(w, x.dtype), data_format='NCHW', strides=[1,1,1,1], padding='SAME')
+        x = tf.nn.conv2d(x, tf.cast(w, x.dtype), data_format='NHWC', strides=[1,1,1,1], padding='SAME')
+    x = tf.transpose(x, [0, 3, 1, 2])
 
     # Reshape/scale output.
     if fused_modconv:
